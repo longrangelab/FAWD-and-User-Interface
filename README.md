@@ -20,12 +20,12 @@ ballistics_api_project/
 
 ## Setup Instructions
 
-Download the ZIP archive, unzip in documents folder, and Run the setup script './setup_ballistics_api.sh' to install system dependencies, create a virtual environment, install Python packages, and set up the project structure:
+Download the ZIP archive, unzip in documents folder, - open a new terminal in the root of the project folder, and run  `chmod +x setup_ballistics_api.sh` to make the shell script executable, then run the the setup script  `./setup_ballistics_api.sh` in the same terminal to install system dependencies, create a virtual environment, install Python packages, and set up the project structure:
 
 This will:
 
 - Install Python 3 and related tools
-- Create a Python virtual environment in `ballistics_api/venv`
+- Create a Python virtual environment in  `ballistics_api/venv` 
 - Install Python packages listed in `requirements.txt`
 - Create the Flask API app if not present
 - Copy `index.html` to the static folder for frontend serving
@@ -36,9 +36,9 @@ This will:
 
 Activate the virtual environment and start the Flask server:
 
-'cd ballistics_api'
-'source venv/bin/activate'
-'python app.py'
+ `cd ballistics_api` 
+ `source venv/bin/activate` 
+ `python app.py` 
 
 The API will be accessible at `http://0.0.0.0:5000`.
 
