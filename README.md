@@ -61,19 +61,72 @@ The frontend allows you to:
 
 ## Configuration
 
+### Environment Variables
+
+The application supports the following environment variables for configuration:
+
+- `SIGHT_HEIGHT`: Sight height in inches (default: 2.0)
+- `ZERO_DISTANCE`: Zero distance in yards (default: 100.0) 
+- `MIN_RANGE`: Minimum calculation range in yards (default: 200.0)
+- `MAX_RANGE`: Maximum calculation range in yards (default: 2000.0)
+- `CALCULATION_POINTS`: Number of calculation points (default: 101)
+- `FLASK_DEBUG`: Enable debug mode (default: false)
+- `FLASK_HOST`: Flask host address (default: 0.0.0.0)
+- `FLASK_PORT`: Flask port (default: 5000)
+
+### Ballistic Configuration
+
 Adjust ballistic calculation units and parameters in:
 
-ballistics_api/file.pybc.toml
+.pybc.toml
 
 ## Dependencies
 
 Main Python packages (also in `requirements.txt`):
 
-- Flask 3.0.3
-- flask-cors 5.0.0
-- py-ballisticcalc 1.0.1
-- numpy 2.1.0
-- scipy 1.14.0
+- Flask >=3.0.3
+- flask-cors >=5.0.0  
+- py-ballisticcalc[exts] >=2.1.0
+- py-ballisticcalc[charts] >=2.1.0
+- numpy >=2.1.0
+- scipy >=1.14.0
+- requests >=2.32.0
+
+---
+
+## API Endpoints
+
+### Health Check
+`GET /health` - Returns API status and configuration
+
+### Ballistic Calculation  
+`POST /api/ballistics` - Calculate ballistic trajectory
+
+**Request Body:**
+```json
+{
+  "bc_g7": 0.5,
+  "muzzle_velocity_fps": 2800,
+  "pressure_inhg": 29.92,
+  "temp_f": 68,
+  "wind_speed_mph": 10,
+  "wind_direction_deg": 90,
+  "range_yds": 800
+}
+```
+
+**Response:**
+```json
+{
+  "drop_moa": -16.743,
+  "windage_moa": 0.828,
+  "time_of_flight_sec": 0.99,
+  "velocity_at_target_fps": 2100.1,
+  "range_yds": [200.0, 206.0, ...],
+  "drop_array_moa": [-5.2, -5.8, ...],
+  "windage_array_moa": [0.3, 0.35, ...]
+}
+```
 
 ---
 
