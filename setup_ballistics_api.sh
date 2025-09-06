@@ -3,12 +3,6 @@ set -e
 sudo apt-get update
 sudo apt-get install -y python3 python3-pip python3-venv
 
-if [ ! -d ballistics_api ]; then
-  mkdir -p ballistics_api
-fi
-
-cd ballistics_api
-
 python3 -m venv venv
 source venv/bin/activate
 
@@ -72,4 +66,4 @@ fi
 
 echo ""
 echo "Setup complete. To launch the API run:"
-echo "cd ballistics_api && source venv/bin/activate && python app.py"
+echo "source venv/bin/activate && python app.py"
