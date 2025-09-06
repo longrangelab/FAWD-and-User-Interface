@@ -1,0 +1,39 @@
+# Configuration file for py-ballisticcalc
+# This file contains default settings for ballistic calculations
+
+[pybc]
+# Main configuration section
+
+[pybc.preferred_units]
+# Distance units
+distance = "yard"
+
+# Velocity units  
+velocity = "fps"
+
+# Angular units
+angular = "degree"
+
+# Temperature units
+temperature = "fahrenheit"
+
+# Pressure units
+pressure = "inhg"
+
+[pybc.calculator]
+# Calculator settings
+trajectory_step = 0.5
+maximum_drop = -11800
+minimum_velocity = 50
+
+[pybc.defaults]
+# Default atmospheric conditions
+pressure = 29.92
+temperature = 68.0
+humidity = 50.0
+
+# Default sight height in inches
+sight_height = 2.0
+
+# Default zero distance in yards
+zero_distance = 100

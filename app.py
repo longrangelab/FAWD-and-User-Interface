@@ -49,7 +49,7 @@ def calculate_ballistics():
         pressure = float(data["pressure_inhg"])
         temp = float(data["temp_f"])
 
-        basicConfig("/home/m/Documents/ballistics_api/.pybc.toml")
+        basicConfig()
 
         weapon = Weapon(sight_height=2)  # inches
         ammo = Ammo(DragModel(bc_g7, TableG7), mv=Velocity.FPS(muzzle_velocity))

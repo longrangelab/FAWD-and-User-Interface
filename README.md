@@ -5,8 +5,8 @@ This project provides a Flask-based API for ballistic calculations using [py-bal
 ---
 
 ## Project Structure
-ballistics_api_project/
-├── ballistics_api/
+
+├── FAWD-and-User-Interface/
 │ ├── app.py # Flask API backend
 │ ├── requirements.txt # Python dependencies
 │ ├── file.pybc.toml # Configuration for py-ballisticcalc
@@ -25,7 +25,7 @@ Download the ZIP archive, unzip in documents folder, - open a new terminal in th
 This will:
 
 - Install Python 3 and related tools
-- Create a Python virtual environment in  `ballistics_api/venv` 
+- Create a Python virtual environment in  `FAWD-and-User-Interface/venv` 
 - Install Python packages listed in `requirements.txt`
 - Create the Flask API app if not present
 - Copy `index.html` to the static folder for frontend serving
@@ -36,7 +36,7 @@ This will:
 
 Activate the virtual environment and start the Flask server:
 
- `cd ballistics_api` 
+ `cd FAWD-and-User-Interface` 
  `source venv/bin/activate` 
  `python app.py` 
 
