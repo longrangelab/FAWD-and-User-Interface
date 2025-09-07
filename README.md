@@ -1,6 +1,6 @@
 #F.A.W.D
 
-This project provides a Flask-based API for ballistic calculations using [py-ballisticcalc](https://github.com/username/py-ballisticcalc) and serves a simple frontend interface for interacting with the API.
+This project provides a Flask-based API for ballistic calculations using [py-ballisticcalc](https://github.com/o-murphy/py-ballisticcalc) and serves a simple frontend interface for interacting with the API.
 
 ---
 
