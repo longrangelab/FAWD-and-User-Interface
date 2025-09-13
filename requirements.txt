@@ -4,4 +4,8 @@ py-ballisticcalc[exts]
 py-ballisticcalc[charts]
 numpy==2.1.0
 scipy==1.14.0
+spidev
+RPi.GPIO
+sx126x
+pyserial
 
