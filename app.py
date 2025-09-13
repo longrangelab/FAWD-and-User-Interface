@@ -6,9 +6,13 @@ from flask_cors import CORS
 from py_ballisticcalc import *
 import numpy as np
 from scipy.interpolate import CubicSpline  # For smooth interpolation with boundary condition
+from lora_receiver import start_lora_receiver, get_received_messages
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
+
+# Start LoRa receiver
+start_lora_receiver()
 
 def log_exception(exc):
     print("--------- EXCEPTION ---------", file=sys.stderr)
@@ -122,6 +126,52 @@ def calculate_ballistics():
             "error": "Internal Server Error",
             "details": str(e)
         }), 500
+
+@app.route('/api/lora/messages', methods=['GET'])
+def get_lora_messages():
+    try:
+        messages = get_received_messages()
+        parsed_messages = []
+        for msg in messages:
+            # Parse message: assume format "sender:messageType:payload"
+            parts = msg.split(':', 2)
+            if len(parts) == 3:
+                sender, msg_type, payload = parts
+                if msg_type == 'ENV':
+                    # Parse environment payload: windSpeed,windMode,windDirection,latitude,longitude,IMUsensitivity
+                    env_parts = payload.split(',')
+                    if len(env_parts) >= 6:
+                        wind_speed = int(env_parts[0])
+                        wind_mode = int(env_parts[1])  # hitFlag?
+                        wind_direction = int(env_parts[2])
+                        latitude = float(env_parts[3])
+                        longitude = float(env_parts[4])
+                        imu_sensitivity = int(env_parts[5])
+                        parsed_messages.append({
+                            'type': 'environment',
+                            'sender': sender,
+                            'wind_speed_mph': wind_speed,
+                            'hit_flag': wind_mode,
+                            'wind_direction_deg': wind_direction,
+                            'latitude': latitude,
+                            'longitude': longitude,
+                            'imu_sensitivity': imu_sensitivity
+                        })
+                elif msg_type == 'ALERT':
+                    parsed_messages.append({
+                        'type': 'alert',
+                        'sender': sender,
+                        'message': payload
+                    })
+            else:
+                parsed_messages.append({
+                    'type': 'raw',
+                    'message': msg
+                })
+        return jsonify({'messages': parsed_messages})
+    except Exception as e:
+        log_exception(e)
+        return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
