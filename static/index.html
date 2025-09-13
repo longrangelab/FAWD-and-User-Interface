@@ -177,7 +177,7 @@
     background: var(--tactical-panel);
     color: var(--tactical-accent);
   }
-  #map, #api-panel {
+  #map, #api-panel, #hit-panel {
     grid-area: main;
     border-radius: 12px;
     background: #181d17;
@@ -186,6 +186,17 @@
     overflow: hidden;
   }
   #api-panel {
+    background: #161a14;
+    color: var(--tactical-accent);
+    box-shadow: 0 2px 16px var(--shadow);
+    padding: 20px 30px;
+    font-family: 'system-ui', sans-serif;
+    font-size: 15px;
+    overflow-y: auto;
+    display: none;
+    position: relative;
+  }
+  #hit-panel {
     background: #161a14;
     color: var(--tactical-accent);
     box-shadow: 0 2px 16px var(--shadow);
@@ -418,6 +429,11 @@
     <div id="apiResults"></div>
     <canvas id="trajectoryCanvas" width="330" height="180" style="background:#181d17; border-radius:10px; margin-top:25px;"></canvas>
   </div>
+  <div id="hit-panel" role="region" aria-label="Hit detection dashboard" style="display:none;">
+    <h2>LoRa Hit Detection</h2>
+    <div id="hitMessages"></div>
+    <button id="refreshHitsBtn">Refresh Hits</button>
+  </div>
   <div id="rightbar" role="region" aria-label="Information panel and instructions">
     <button id="infoToggle" aria-pressed="false" aria-label="Show or hide instructions">❔ Info</button>
     <div id="instructions" role="region" aria-live="polite" tabindex="0" aria-hidden="true">
@@ -508,19 +524,28 @@
   const mapDiv = document.getElementById('map');
   const apiPanel = document.getElementById('api-panel');
   const modeToggleBtn = document.getElementById('modeToggleBtn');
-  let showingAPI = false;
+  const hitPanel = document.getElementById('hit-panel');
+  let currentMode = 'map'; // 'map', 'api', 'hit'
 
   modeToggleBtn.onclick = () => {
-    showingAPI = !showingAPI;
-    if (showingAPI) {
+    if (currentMode === 'map') {
+      currentMode = 'api';
       mapDiv.style.display = 'none';
       apiPanel.style.display = 'block';
+      hitPanel.style.display = 'none';
+      modeToggleBtn.textContent = 'Hit Mode';
+    } else if (currentMode === 'api') {
+      currentMode = 'hit';
+      mapDiv.style.display = 'none';
+      apiPanel.style.display = 'none';
+      hitPanel.style.display = 'block';
       modeToggleBtn.textContent = 'Map Mode';
     } else {
-      apiPanel.style.display = 'none';
+      currentMode = 'map';
       mapDiv.style.display = 'block';
+      apiPanel.style.display = 'none';
+      hitPanel.style.display = 'none';
       modeToggleBtn.textContent = 'API Mode';
-
       map.invalidateSize();
     }
   };
@@ -654,10 +679,27 @@ function stopSolutionAgeTimer() {
   }
 
   async function fetchWeatherFromLocal(lat, lon) {
-    const url = `http://raspberrypi.local:5000/api/local_wind?latitude=${lat}&longitude=${lon}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('Local API response not OK');
-    return await resp.json();
+    // Fetch LoRa messages and extract latest environment data
+    const resp = await fetch('/api/lora/messages');
+    if (!resp.ok) throw new Error('LoRa API response not OK');
+    const data = await resp.json();
+    // Find the latest environment message
+    const envMsg = data.messages.find(msg => msg.type === 'environment');
+    if (!envMsg) throw new Error('No environment data from LoRa');
+    // Mock the API response format
+    return {
+      current_weather: {
+        temperature: 20, // Not provided, use default
+        windspeed: envMsg.wind_speed_mph / 0.621371, // Convert mph to km/h for consistency
+        winddirection: envMsg.wind_direction_deg
+      },
+      hourly: {
+        pressure_msl: [1013.25], // Not provided, use default
+        relativehumidity_2m: [50], // Not provided
+        windgusts_10m: [envMsg.wind_speed_mph / 0.621371], // Approximate
+        cloudcover: [0] // Not provided
+      }
+    };
   }
 
   async function updateWeatherFields(data, source) {
@@ -748,6 +790,48 @@ function stopSolutionAgeTimer() {
   document.getElementById('downloadTilesBtn').onclick = () => {
     alert('Map tiles download feature not implemented.');
   };
+
+  // Hit detection functions
+  async function fetchLoRaMessages() {
+    try {
+      const resp = await fetch('/api/lora/messages');
+      if (!resp.ok) throw new Error('LoRa API response not OK');
+      const data = await resp.json();
+      displayHits(data.messages);
+    } catch (e) {
+      console.error('Failed to fetch LoRa messages:', e);
+      document.getElementById('hitMessages').innerHTML = '<p style="color: red;">Failed to fetch LoRa messages.</p>';
+    }
+  }
+
+  function displayHits(messages) {
+    const hitMessagesDiv = document.getElementById('hitMessages');
+    if (messages.length === 0) {
+      hitMessagesDiv.innerHTML = '<p>No recent LoRa messages.</p>';
+      return;
+    }
+    let html = '<ul>';
+    messages.forEach(msg => {
+      if (msg.type === 'alert' && msg.message.includes('Hit')) {
+        html += `<li style="color: red; font-weight: bold;">HIT DETECTED from ${msg.sender}: ${msg.message}</li>`;
+      } else if (msg.type === 'environment') {
+        html += `<li>Environment from ${msg.sender}: Wind ${msg.wind_speed_mph} mph at ${msg.wind_direction_deg}°, Lat ${msg.latitude}, Lon ${msg.longitude}</li>`;
+      } else {
+        html += `<li>Unknown: ${JSON.stringify(msg)}</li>`;
+      }
+    });
+    html += '</ul>';
+    hitMessagesDiv.innerHTML = html;
+  }
+
+  document.getElementById('refreshHitsBtn').onclick = fetchLoRaMessages;
+
+  // Auto-refresh hits every 5 seconds when hit panel is visible
+  setInterval(() => {
+    if (currentMode === 'hit') {
+      fetchLoRaMessages();
+    }
+  }, 5000);
 </script>
 </body>
 </html>
