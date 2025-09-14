@@ -7,12 +7,46 @@ from py_ballisticcalc import *
 import numpy as np
 from scipy.interpolate import CubicSpline  # For smooth interpolation with boundary condition
 from lora_receiver import start_lora_receiver, get_received_messages
+import threading
+import time
 
 app = Flask(__name__, static_folder='static', static_url_path='')
 CORS(app)
 
 # Start LoRa receiver
 start_lora_receiver()
+
+# Global variables for latest environmental data from LoRa
+latest_env_data = {
+    'wind_speed_mph': 0.0,
+    'wind_direction_deg': 0.0,
+    'temperature_f': 70.0,  # Default temperature
+    'pressure_inhg': 29.92,  # Default pressure
+    'last_updated': 0
+}
+env_data_lock = threading.Lock()
+
+def update_environmental_data():
+    """Background thread to update environmental data from LoRa messages"""
+    while True:
+        try:
+            messages = get_received_messages()
+            for msg in messages:
+                if isinstance(msg, dict) and 'wind_speed' in msg:
+                    # This is JSON data from T-Beam
+                    with env_data_lock:
+                        latest_env_data['wind_speed_mph'] = msg.get('wind_speed', 0)
+                        latest_env_data['wind_direction_deg'] = msg.get('wind_direction', 0)
+                        # Note: T-Beam doesn't send temp/pressure, so we keep defaults
+                        latest_env_data['last_updated'] = time.time()
+                        print(f"Updated environmental data from LoRa: Wind {latest_env_data['wind_speed_mph']} mph @ {latest_env_data['wind_direction_deg']}°")
+        except Exception as e:
+            print(f"Error updating environmental data: {e}")
+        time.sleep(1)  # Check for new data every second
+
+# Start the environmental data update thread
+env_thread = threading.Thread(target=update_environmental_data, daemon=True)
+env_thread.start()
 
 def log_exception(exc):
     print("--------- EXCEPTION ---------", file=sys.stderr)
@@ -30,28 +64,43 @@ def serve_static(path):
     else:
         return app.send_static_file('index.html')
 
-@app.route('/api/ballistics', methods=['POST'])
-def calculate_ballistics():
+@app.route('/api/environment', methods=['GET'])
+def get_environment():
+    """Get current environmental conditions from LoRa data"""
+    with env_data_lock:
+        return jsonify({
+            'wind_speed_mph': latest_env_data['wind_speed_mph'],
+            'wind_direction_deg': latest_env_data['wind_direction_deg'],
+            'temperature_f': latest_env_data['temperature_f'],
+            'pressure_inhg': latest_env_data['pressure_inhg'],
+            'last_updated': latest_env_data['last_updated']
+        })
+
+@app.route('/api/ballistics/auto', methods=['POST'])
+def calculate_ballistics_auto():
+    """Calculate ballistics using automatic LoRa environmental data"""
     try:
         data = request.get_json()
         if data is None or not isinstance(data, dict) or data == {}:
             return jsonify({"error": "Invalid JSON payload"}), 400
         
-        required_fields = [
-            "bc_g7", "muzzle_velocity_fps", "pressure_inhg", "temp_f",
-            "wind_speed_mph", "wind_direction_deg", "range_yds"
-        ]
+        required_fields = ["bc_g7", "muzzle_velocity_fps", "range_yds"]
         missing = [f for f in required_fields if f not in data]
         if missing:
             return jsonify({"error": f"Missing required fields: {', '.join(missing)}"}), 400
 
+        # Get environmental data from LoRa
+        with env_data_lock:
+            wind_speed = latest_env_data['wind_speed_mph']
+            wind_direction = latest_env_data['wind_direction_deg']
+            pressure = latest_env_data['pressure_inhg']
+            temp = latest_env_data['temperature_f']
+
         bc_g7 = float(data["bc_g7"])
         muzzle_velocity = float(data["muzzle_velocity_fps"])
         max_range_yds = float(data["range_yds"])
-        wind_speed = float(data["wind_speed_mph"])
-        wind_direction = float(data["wind_direction_deg"])
-        pressure = float(data["pressure_inhg"])
-        temp = float(data["temp_f"])
+
+        print(f"Using LoRa environmental data: Wind {wind_speed} mph @ {wind_direction}°, Temp {temp}°F, Pressure {pressure} inHg")
 
         basicConfig()
 
@@ -106,10 +155,6 @@ def calculate_ballistics():
             time_list.append(round(time_val, 3))
             velocity_list.append(round(velocity_val, 1))
 
-            print(f"range: {r:.1f} yd | drop_inches: {drop_inches:.2f} | drop_moa: {drop_moa:.3f}")
-            
-            print(f"DEBUG: range={r}, cs_drop(r)={drop_inches}, cs_wind(r)={windage_val}")
-
         return jsonify({
             "drop_moa": drop_list[-1],
             "windage_moa": wind_list[-1],
@@ -117,7 +162,13 @@ def calculate_ballistics():
             "velocity_at_target_fps": velocity_list[-1],
             "range_yds": [round(r, 1) for r in requested_ranges],
             "drop_array_moa": drop_list,
-            "windage_array_moa": wind_list
+            "windage_array_moa": wind_list,
+            "environmental_data": {
+                "wind_speed_mph": wind_speed,
+                "wind_direction_deg": wind_direction,
+                "temperature_f": temp,
+                "pressure_inhg": pressure
+            }
         })
 
     except Exception as e:
